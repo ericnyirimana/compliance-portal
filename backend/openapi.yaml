@@ -1,0 +1,761 @@
+openapi: 3.0.0
+info:
+  title: BNR Licensing Portal API
+  description: National Bank of Rwanda — Licensing & Compliance Portal
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string
+            details:
+              type: object
+    TokenPair:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        role:
+          type: string
+          enum: [APPLICANT, REVIEWER, DECISION_MAKER, ADMIN]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    Application:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bankName:
+          type: string
+        licenceType:
+          type: string
+          enum: [COMMERCIAL_BANK, MICROFINANCE, FOREX_BUREAU, PAYMENT_INSTITUTION]
+        capitalAmount:
+          type: string
+        address:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [DRAFT, SUBMITTED, UNDER_REVIEW, RETURNED_FOR_INFO, PENDING_DECISION, APPROVED, REJECTED]
+        version:
+          type: integer
+        applicantId:
+          type: string
+          format: uuid
+        reviewerId:
+          type: string
+          format: uuid
+          nullable: true
+        decisionMakerId:
+          type: string
+          format: uuid
+          nullable: true
+        decisionNotes:
+          type: string
+          nullable: true
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AuditEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        action:
+          type: string
+        applicationId:
+          type: string
+          format: uuid
+          nullable: true
+        stateBefore:
+          type: string
+          nullable: true
+        stateAfter:
+          type: string
+          nullable: true
+        payload:
+          type: object
+          nullable: true
+        occurredAt:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+          nullable: true
+        ip:
+          type: string
+          nullable: true
+        prevHash:
+          type: string
+        rowHash:
+          type: string
+    DocumentVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        versionNumber:
+          type: integer
+        filenameOriginal:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type: string
+        uploadedById:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Register a new applicant account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Login and receive token pair
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: New token pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Invalidate refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '204':
+          description: Logged out
+
+  /users:
+    get:
+      tags: [users]
+      summary: List all users (ADMIN)
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '403':
+          description: Forbidden
+
+  /users/{id}/status:
+    patch:
+      tags: [users]
+      summary: Activate or deactivate a user (ADMIN)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/{id}/role:
+    patch:
+      tags: [users]
+      summary: Change a user role (ADMIN)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum: [APPLICANT, REVIEWER, DECISION_MAKER, ADMIN]
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /applications:
+    get:
+      tags: [applications]
+      summary: List applications (own for APPLICANT, all for others)
+      responses:
+        '200':
+          description: Application list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Application'
+    post:
+      tags: [applications]
+      summary: Create a new application (APPLICANT)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bankName, licenceType, capitalAmount]
+              properties:
+                bankName:
+                  type: string
+                  minLength: 3
+                licenceType:
+                  type: string
+                  enum: [COMMERCIAL_BANK, MICROFINANCE, FOREX_BUREAU, PAYMENT_INSTITUTION]
+                capitalAmount:
+                  type: number
+                  minimum: 1
+                address:
+                  type: string
+      responses:
+        '201':
+          description: Created application
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '403':
+          description: Forbidden
+
+  /applications/{id}:
+    get:
+      tags: [applications]
+      summary: Get application by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Application
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '404':
+          description: Not found
+
+  /applications/{id}/submit:
+    post:
+      tags: [applications]
+      summary: Submit a DRAFT application (APPLICANT)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Submitted application
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '409':
+          description: Invalid transition or STALE_VERSION
+
+  /applications/{id}/pickup:
+    post:
+      tags: [applications]
+      summary: Pick up a SUBMITTED application (REVIEWER)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Application now UNDER_REVIEW
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '409':
+          description: STALE_VERSION — another reviewer picked it up first
+
+  /applications/{id}/request-info:
+    post:
+      tags: [applications]
+      summary: Request additional information (REVIEWER)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [notes]
+              properties:
+                notes:
+                  type: string
+                  minLength: 10
+      responses:
+        '201':
+          description: Application returned for info
+
+  /applications/{id}/recommend:
+    post:
+      tags: [applications]
+      summary: Recommend for final decision (REVIEWER)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        '201':
+          description: Application now PENDING_DECISION
+
+  /applications/{id}/resubmit:
+    post:
+      tags: [applications]
+      summary: Resubmit after info was requested (APPLICANT)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Application resubmitted
+
+  /applications/{id}/decide:
+    post:
+      tags: [applications]
+      summary: Issue final approval or rejection (DECISION_MAKER)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  enum: [APPROVED, REJECTED]
+                notes:
+                  type: string
+      responses:
+        '201':
+          description: Decision issued
+        '403':
+          description: Reviewer cannot be decision maker
+
+  /applications/{id}/documents:
+    get:
+      tags: [documents]
+      summary: List document slots for an application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document slots
+
+  /applications/{id}/documents/{slot}:
+    get:
+      tags: [documents]
+      summary: List all versions for a document slot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: slot
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentVersion'
+    post:
+      tags: [documents]
+      summary: Upload a document (new version if slot exists)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: slot
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Uploaded document version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersion'
+        '400':
+          description: Invalid MIME type
+        '413':
+          description: File too large (>5MB)
+
+  /applications/{id}/documents/{slot}/versions/{versionId}/download:
+    get:
+      tags: [documents]
+      summary: Download a specific document version (authenticated)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: slot
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: File stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  /audit/verify:
+    get:
+      tags: [audit]
+      summary: Verify audit log hash chain integrity
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  totalRows:
+                    type: integer
+                  firstBrokenRowId:
+                    type: string
+                    format: uuid
+                  firstBrokenPosition:
+                    type: integer
+
+  /audit/applications/{applicationId}:
+    get:
+      tags: [audit]
+      summary: Get audit log for an application (paginated)
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Audit entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEntry'
+
+  /audit:
+    get:
+      tags: [audit]
+      summary: Get all audit log entries (paginated, admin/reviewer/dm)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: All audit entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEntry'
