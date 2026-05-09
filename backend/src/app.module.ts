@@ -3,6 +3,9 @@ import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { DocumentsModule } from './modules/documents/documents.module';
+import { ApplicationsModule } from './modules/applications/applications.module';
+import { AuditModule } from './modules/audit/audit.module';
 import { HealthController } from './modules/health/health.controller';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
@@ -14,6 +17,9 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
     DatabaseModule,
     AuthModule,
     UsersModule,
+    AuditModule,
+    ApplicationsModule,
+    DocumentsModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -3,7 +3,6 @@ import {
   CreateDateColumn,
   Entity,
   ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
   VersionColumn,
@@ -30,58 +29,50 @@ export enum LicenceType {
 @Entity('applications')
 export class Application {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @ManyToOne(() => User, { eager: false })
-  applicant: User;
+  applicant!: User;
 
   @Column({ name: 'applicant_id' })
-  applicantId: string;
+  applicantId!: string;
 
   @Column({ name: 'bank_name' })
-  bankName: string;
+  bankName!: string;
 
-  @Column({
-    name: 'licence_type',
-    type: 'enum',
-    enum: LicenceType,
-  })
-  licenceType: LicenceType;
+  @Column({ name: 'licence_type', type: 'enum', enum: LicenceType })
+  licenceType!: LicenceType;
 
   @Column({ name: 'capital_amount', type: 'bigint' })
-  capitalAmount: string;
+  capitalAmount!: string;
 
-  @Column({ nullable: true })
-  address: string;
+  @Column({ nullable: true, type: 'text' })
+  address!: string | null;
 
-  @Column({
-    type: 'enum',
-    enum: ApplicationStatus,
-    default: ApplicationStatus.DRAFT,
-  })
-  status: ApplicationStatus;
+  @Column({ type: 'enum', enum: ApplicationStatus, default: ApplicationStatus.DRAFT })
+  status!: ApplicationStatus;
 
   @VersionColumn()
-  version: number;
+  version!: number;
 
   @Column({ name: 'reviewer_id', nullable: true })
-  reviewerId: string;
+  reviewerId!: string | null;
 
   @Column({ name: 'decision_maker_id', nullable: true })
-  decisionMakerId: string;
+  decisionMakerId!: string | null;
 
   @Column({ name: 'decision_notes', nullable: true, type: 'text' })
-  decisionNotes: string;
+  decisionNotes!: string | null;
 
-  @Column({ name: 'submitted_at', nullable: true })
-  submittedAt: Date;
+  @Column({ name: 'submitted_at', nullable: true, type: 'timestamptz' })
+  submittedAt!: Date | null;
 
-  @Column({ name: 'decided_at', nullable: true })
-  decidedAt: Date;
+  @Column({ name: 'decided_at', nullable: true, type: 'timestamptz' })
+  decidedAt!: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
