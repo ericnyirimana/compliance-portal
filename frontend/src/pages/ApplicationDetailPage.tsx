@@ -241,6 +241,23 @@ function SlotCard({ slot, appId, onUpload, uploading }: {
     queryFn: () => api.get(`/applications/${appId}/documents/${slot.slot}`).then((r) => r.data),
   });
 
+  async function downloadVersion(versionId: string, filename: string) {
+    try {
+      const resp = await api.get(
+        `/applications/${appId}/documents/${slot.slot}/versions/${versionId}/download`,
+        { responseType: 'blob' },
+      );
+      const url = URL.createObjectURL(resp.data as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Download failed');
+    }
+  }
+
   return (
     <div className="border border-bnr-muted rounded-lg overflow-hidden">
       <div className="bg-bnr-cream px-4 py-3 flex items-center justify-between">
@@ -269,14 +286,12 @@ function SlotCard({ slot, appId, onUpload, uploading }: {
               <span className="font-medium text-bnr-text">{v.filenameOriginal}</span>
               <span className="text-bnr-subtle text-xs ml-2">v{v.versionNumber} · {formatBytes(v.sizeBytes)}</span>
             </div>
-            <a
-              href={`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/applications/${appId}/documents/${slot.slot}/versions/${v.id}/download`}
+            <button
+              onClick={() => downloadVersion(v.id, v.filenameOriginal)}
               className="text-xs font-medium text-bnr-brown hover:underline"
-              target="_blank"
-              rel="noreferrer"
             >
               Download
-            </a>
+            </button>
           </div>
         ))}
       </div>

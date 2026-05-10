@@ -7,38 +7,38 @@ import {
 @Entity('audit_log')
 export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
-  @Column({ name: 'actor_user_id', nullable: true })
-  actorUserId: string;
+  @Column({ name: 'actor_user_id', nullable: true, type: 'uuid' })
+  actorUserId!: string | null;
 
-  @Column()
-  action: string;
+  @Column({ type: 'varchar' })
+  action!: string;
 
-  @Column({ name: 'application_id', nullable: true })
-  applicationId: string;
+  @Column({ name: 'application_id', nullable: true, type: 'uuid' })
+  applicationId!: string | null;
 
-  @Column({ name: 'state_before', nullable: true })
-  stateBefore: string;
+  @Column({ name: 'state_before', nullable: true, type: 'varchar' })
+  stateBefore!: string | null;
 
-  @Column({ name: 'state_after', nullable: true })
-  stateAfter: string;
+  @Column({ name: 'state_after', nullable: true, type: 'varchar' })
+  stateAfter!: string | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  payload: Record<string, unknown>;
+  payload!: Record<string, unknown> | null;
 
   @Column({ name: 'occurred_at', type: 'timestamptz' })
-  occurredAt: Date;
+  occurredAt!: Date;
 
-  @Column({ name: 'request_id', nullable: true })
-  requestId: string;
+  @Column({ name: 'request_id', nullable: true, type: 'varchar' })
+  requestId!: string | null;
 
-  @Column({ nullable: true })
-  ip: string;
+  @Column({ nullable: true, type: 'varchar' })
+  ip!: string | null;
 
-  @Column({ name: 'prev_hash' })
-  prevHash: string;
+  @Column({ name: 'prev_hash', type: 'varchar' })
+  prevHash!: string;
 
-  @Column({ name: 'row_hash' })
-  rowHash: string;
+  @Column({ name: 'row_hash', type: 'varchar' })
+  rowHash!: string;
 }

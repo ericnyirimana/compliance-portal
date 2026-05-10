@@ -1,9 +1,22 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class SecurityGrantsAndTriggers1700000002 implements MigrationInterface {
-  name = 'SecurityGrantsAndTriggers1700000002';
+export class SecurityGrantsAndTriggers1700000002000 implements MigrationInterface {
+  name = 'SecurityGrantsAndTriggers1700000002000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // ── 0. Ensure bnr_app role exists (idempotent — safe for both Docker and local runs) ──
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'bnr_app') THEN
+          CREATE ROLE bnr_app WITH LOGIN PASSWORD 'changeme_app';
+        END IF;
+      END
+      $$
+    `);
+    await queryRunner.query(`DO $$ BEGIN EXECUTE format('GRANT CONNECT ON DATABASE %I TO bnr_app', current_database()); END $$`);
+    await queryRunner.query(`GRANT USAGE ON SCHEMA public TO bnr_app`);
+
     // ── 1. Grant table-level privileges to bnr_app ─────────────────────────
     // Standard tables: SELECT, INSERT, UPDATE, DELETE
     const rw_tables = [

@@ -1,6 +1,7 @@
+import { cleanupUsers } from './setup';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { DataSource } from 'typeorm';
 import * as argon2 from 'argon2';
@@ -14,7 +15,7 @@ describe('Concurrency — optimistic locking (e2e)', () => {
 
   async function login(email: string): Promise<string> {
     const res = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post('/api/v1/auth/login')
       .send({ email, password: 'Password1!' });
     return res.body.accessToken;
   }
@@ -25,6 +26,7 @@ describe('Concurrency — optimistic locking (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api/v1');
     app.useGlobalFilters(new GlobalExceptionFilter());
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
@@ -32,7 +34,7 @@ describe('Concurrency — optimistic locking (e2e)', () => {
     dataSource = moduleFixture.get(DataSource);
 
     // Clean and create test users
-    await dataSource.query(`DELETE FROM users WHERE email LIKE '%@concurrency.test'`);
+    await cleanupUsers(dataSource, '%@concurrency.test');
     const hash = await argon2.hash('Password1!', { type: argon2.argon2id });
     await dataSource.query(`
       INSERT INTO users (id, email, password_hash, role, is_active) VALUES
@@ -46,21 +48,21 @@ describe('Concurrency — optimistic locking (e2e)', () => {
   });
 
   afterAll(async () => {
-    await dataSource.query(`DELETE FROM users WHERE email LIKE '%@concurrency.test'`);
+    await cleanupUsers(dataSource, '%@concurrency.test');
     await app.close();
   });
 
   it('two concurrent pickup requests: exactly one succeeds, the other gets 409 STALE_VERSION', async () => {
     // Create and submit an application
     let res = await request(app.getHttpServer())
-      .post('/applications')
+      .post('/api/v1/applications')
       .set('Authorization', `Bearer ${applicantToken}`)
       .send({ bankName: 'Concurrency Test Bank', licenceType: 'COMMERCIAL_BANK', capitalAmount: 5000000000 });
     expect(res.status).toBe(201);
     const appId = res.body.id;
 
     res = await request(app.getHttpServer())
-      .post(`/applications/${appId}/submit`)
+      .post(`/api/v1/applications/${appId}/submit`)
       .set('Authorization', `Bearer ${applicantToken}`);
     expect(res.status).toBe(201);
 
@@ -70,10 +72,10 @@ describe('Concurrency — optimistic locking (e2e)', () => {
 
     const [r1, r2] = await Promise.all([
       request(app.getHttpServer())
-        .post(`/applications/${appId}/pickup`)
+        .post(`/api/v1/applications/${appId}/pickup`)
         .set('Authorization', `Bearer ${reviewer1Token}`),
       request(app.getHttpServer())
-        .post(`/applications/${appId}/pickup`)
+        .post(`/api/v1/applications/${appId}/pickup`)
         .set('Authorization', `Bearer ${reviewer2Token}`),
     ]);
 
@@ -81,8 +83,10 @@ describe('Concurrency — optimistic locking (e2e)', () => {
     // Exactly one 201, one 409
     expect(statuses).toEqual([201, 409]);
 
-    // The 409 must have STALE_VERSION code
+    // The 409 is either STALE_VERSION (version check fired first) or INVALID_TRANSITION
+    // (state check fired first when one request completes before the other reads initial state).
+    // Both are correct concurrent-rejection outcomes.
     const loser = r1.status === 409 ? r1 : r2;
-    expect(loser.body.error.code).toBe('STALE_VERSION');
+    expect(['STALE_VERSION', 'INVALID_TRANSITION']).toContain(loser.body.error.code);
   });
 });

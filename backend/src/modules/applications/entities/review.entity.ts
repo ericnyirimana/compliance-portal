@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -19,26 +20,28 @@ export enum ReviewAction {
 @Entity('reviews')
 export class Review {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @ManyToOne(() => Application)
-  application: Application;
+  @JoinColumn({ name: 'application_id' })
+  application!: Application;
 
-  @Column({ name: 'application_id' })
-  applicationId: string;
+  @Column({ name: 'application_id', type: 'uuid' })
+  applicationId!: string;
 
   @ManyToOne(() => User)
-  reviewer: User;
+  @JoinColumn({ name: 'reviewer_id' })
+  reviewer!: User;
 
-  @Column({ name: 'reviewer_id' })
-  reviewerId: string;
+  @Column({ name: 'reviewer_id', type: 'uuid' })
+  reviewerId!: string;
 
   @Column({ type: 'enum', enum: ReviewAction })
-  action: ReviewAction;
+  action!: ReviewAction;
 
   @Column({ nullable: true, type: 'text' })
-  notes: string;
+  notes!: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 }

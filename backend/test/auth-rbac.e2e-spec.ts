@@ -1,6 +1,7 @@
+import { cleanupUsers } from './setup';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { DataSource } from 'typeorm';
 import * as argon2 from 'argon2';
@@ -17,7 +18,7 @@ describe('AuthZ RBAC (e2e)', () => {
 
   async function login(email: string, password: string): Promise<string> {
     const res = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post('/api/v1/auth/login')
       .send({ email, password });
     return res.body.accessToken;
   }
@@ -28,6 +29,7 @@ describe('AuthZ RBAC (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api/v1');
     app.useGlobalFilters(new GlobalExceptionFilter());
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
@@ -35,7 +37,7 @@ describe('AuthZ RBAC (e2e)', () => {
     dataSource = moduleFixture.get(DataSource);
 
     // Clean test users
-    await dataSource.query(`DELETE FROM users WHERE email LIKE '%@rbac.test'`);
+    await cleanupUsers(dataSource, '%@rbac.test');
 
     // Create test users
     const hash = await argon2.hash('Password1!', { type: argon2.argon2id });
@@ -55,19 +57,19 @@ describe('AuthZ RBAC (e2e)', () => {
   });
 
   afterAll(async () => {
-    await dataSource.query(`DELETE FROM users WHERE email LIKE '%@rbac.test'`);
+    await cleanupUsers(dataSource, '%@rbac.test');
     await app.close();
   });
 
   describe('Unauthenticated access', () => {
     it('GET /applications without token → 401', async () => {
-      const res = await request(app.getHttpServer()).get('/applications');
+      const res = await request(app.getHttpServer()).get('/api/v1/applications');
       expect(res.status).toBe(401);
       expect(res.body.error.code).toBe('UNAUTHENTICATED');
     });
 
     it('GET /health → 200 (public)', async () => {
-      const res = await request(app.getHttpServer()).get('/health');
+      const res = await request(app.getHttpServer()).get('/api/v1/health');
       expect(res.status).toBe(200);
     });
   });
@@ -75,7 +77,7 @@ describe('AuthZ RBAC (e2e)', () => {
   describe('APPLICANT', () => {
     it('can create an application', async () => {
       const res = await request(app.getHttpServer())
-        .post('/applications')
+        .post('/api/v1/applications')
         .set('Authorization', `Bearer ${applicantToken}`)
         .send({
           bankName: 'Test Bank RBAC',
@@ -87,14 +89,14 @@ describe('AuthZ RBAC (e2e)', () => {
 
     it('cannot pickup an application (REVIEWER only) → 403', async () => {
       const res = await request(app.getHttpServer())
-        .post('/applications/00000000-0000-0000-0000-000000000001/pickup')
+        .post('/api/v1/applications/00000000-0000-0000-0000-000000000001/pickup')
         .set('Authorization', `Bearer ${applicantToken}`);
       expect(res.status).toBe(403);
     });
 
     it('cannot list users (ADMIN only) → 403', async () => {
       const res = await request(app.getHttpServer())
-        .get('/users')
+        .get('/api/v1/users')
         .set('Authorization', `Bearer ${applicantToken}`);
       expect(res.status).toBe(403);
     });
@@ -103,7 +105,7 @@ describe('AuthZ RBAC (e2e)', () => {
   describe('REVIEWER', () => {
     it('cannot create an application → 403', async () => {
       const res = await request(app.getHttpServer())
-        .post('/applications')
+        .post('/api/v1/applications')
         .set('Authorization', `Bearer ${reviewerToken}`)
         .send({ bankName: 'Test', licenceType: 'COMMERCIAL_BANK', capitalAmount: 1000000 });
       expect(res.status).toBe(403);
@@ -111,7 +113,7 @@ describe('AuthZ RBAC (e2e)', () => {
 
     it('cannot decide an application → 403', async () => {
       const res = await request(app.getHttpServer())
-        .post('/applications/00000000-0000-0000-0000-000000000001/decide')
+        .post('/api/v1/applications/00000000-0000-0000-0000-000000000001/decide')
         .set('Authorization', `Bearer ${reviewerToken}`)
         .send({ decision: 'APPROVED' });
       expect(res.status).toBe(403);
@@ -119,7 +121,7 @@ describe('AuthZ RBAC (e2e)', () => {
 
     it('can list applications', async () => {
       const res = await request(app.getHttpServer())
-        .get('/applications')
+        .get('/api/v1/applications')
         .set('Authorization', `Bearer ${reviewerToken}`);
       expect(res.status).toBe(200);
     });
@@ -128,14 +130,14 @@ describe('AuthZ RBAC (e2e)', () => {
   describe('ADMIN', () => {
     it('can list users', async () => {
       const res = await request(app.getHttpServer())
-        .get('/users')
+        .get('/api/v1/users')
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
     });
 
     it('cannot create an application → 403', async () => {
       const res = await request(app.getHttpServer())
-        .post('/applications')
+        .post('/api/v1/applications')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ bankName: 'Test', licenceType: 'COMMERCIAL_BANK', capitalAmount: 1000000 });
       expect(res.status).toBe(403);
@@ -148,7 +150,7 @@ describe('AuthZ RBAC (e2e)', () => {
     it('setup: create and advance application to PENDING_DECISION', async () => {
       // Create as applicant
       let res = await request(app.getHttpServer())
-        .post('/applications')
+        .post('/api/v1/applications')
         .set('Authorization', `Bearer ${applicantToken}`)
         .send({ bankName: 'Conflict Test Bank', licenceType: 'MICROFINANCE', capitalAmount: 500000000 });
       expect(res.status).toBe(201);
@@ -156,19 +158,19 @@ describe('AuthZ RBAC (e2e)', () => {
 
       // Submit
       res = await request(app.getHttpServer())
-        .post(`/applications/${appId}/submit`)
+        .post(`/api/v1/applications/${appId}/submit`)
         .set('Authorization', `Bearer ${applicantToken}`);
       expect(res.status).toBe(201);
 
       // Pickup as reviewer
       res = await request(app.getHttpServer())
-        .post(`/applications/${appId}/pickup`)
+        .post(`/api/v1/applications/${appId}/pickup`)
         .set('Authorization', `Bearer ${reviewerToken}`);
       expect(res.status).toBe(201);
 
       // Recommend (→ PENDING_DECISION)
       res = await request(app.getHttpServer())
-        .post(`/applications/${appId}/recommend`)
+        .post(`/api/v1/applications/${appId}/recommend`)
         .set('Authorization', `Bearer ${reviewerToken}`)
         .send({ notes: 'Looks good' });
       expect(res.status).toBe(201);
@@ -182,7 +184,7 @@ describe('AuthZ RBAC (e2e)', () => {
       // The DB trigger test covers the DB layer separately.
       // Here we verify the role guard: reviewer role cannot call /decide → 403.
       const res = await request(app.getHttpServer())
-        .post(`/applications/${appId}/decide`)
+        .post(`/api/v1/applications/${appId}/decide`)
         .set('Authorization', `Bearer ${reviewerToken}`)
         .send({ decision: 'APPROVED' });
       expect(res.status).toBe(403);
@@ -190,7 +192,7 @@ describe('AuthZ RBAC (e2e)', () => {
 
     it('decision maker (who did not review) can decide → 201', async () => {
       const res = await request(app.getHttpServer())
-        .post(`/applications/${appId}/decide`)
+        .post(`/api/v1/applications/${appId}/decide`)
         .set('Authorization', `Bearer ${decisionMakerToken}`)
         .send({ decision: 'APPROVED', notes: 'All good' });
       expect(res.status).toBe(201);

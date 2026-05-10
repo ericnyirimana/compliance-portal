@@ -12,12 +12,66 @@ cp .env.example .env
 docker compose up
 ```
 
-- **Backend API**: http://localhost:3000
+- **Backend API**: http://localhost:3000/api/v1
 - **Frontend**: http://localhost:5173
 - **API Docs (Swagger)**: http://localhost:3000/api/docs
-- **Health check**: http://localhost:3000/health
+- **Health check**: http://localhost:3000/api/v1/health
 
 The docker compose startup runs migrations automatically (`npm run migration:run`) then seeds the database (`npm run seed`) before launching the dev servers.
+
+## Run Without Docker
+
+If you prefer to run the backend against a local PostgreSQL instance instead of Docker:
+
+### 1 — PostgreSQL prerequisites
+
+```bash
+# Create the database and owner role (adjust credentials as needed)
+psql -U postgres -c "CREATE ROLE bnr_owner WITH LOGIN PASSWORD 'changeme_owner' SUPERUSER;"
+psql -U postgres -c "CREATE DATABASE bnr_licensing OWNER bnr_owner;"
+
+# Bootstrap the bnr_app runtime role and schema grants
+psql -U bnr_owner -d bnr_licensing -f postgres/init.sql
+```
+
+> If `bnr_owner` already exists as your local superuser, skip the first `CREATE ROLE` command and adjust the `POSTGRES_OWNER_PASSWORD` accordingly.
+
+### 2 — Backend environment
+
+```bash
+cp backend/.env.local.example backend/.env
+# Edit backend/.env — set DATABASE_URL, DATABASE_OWNER_URL, and JWT secrets
+```
+
+### 3 — Install, migrate, seed, and start
+
+```bash
+cd backend
+npm install
+
+# Run all pending migrations (uses DATABASE_OWNER_URL)
+npm run migration:run
+
+# Seed the database with demo users (idempotent)
+npm run seed
+
+# Start the dev server with hot-reload
+npm run start:dev
+```
+
+Backend API will be available at **http://localhost:3000/api/v1** (Swagger at `/api/docs`).
+
+### 4 — Frontend (separate terminal)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend will be available at **http://localhost:5173**.
+
+---
 
 ## Seed Credentials
 

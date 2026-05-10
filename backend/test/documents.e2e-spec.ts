@@ -1,6 +1,7 @@
+import { cleanupUsers } from './setup';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { DataSource } from 'typeorm';
 import * as argon2 from 'argon2';
@@ -18,32 +19,33 @@ describe('Document uploads (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api/v1');
     app.useGlobalFilters(new GlobalExceptionFilter());
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
 
     dataSource = moduleFixture.get(DataSource);
-    await dataSource.query(`DELETE FROM users WHERE email LIKE '%@docs.test'`);
+    await cleanupUsers(dataSource, '%@docs.test');
     const hash = await argon2.hash('Password1!', { type: argon2.argon2id });
     await dataSource.query(`
       INSERT INTO users (id, email, password_hash, role, is_active) VALUES
         (gen_random_uuid(), 'applicant@docs.test', $1, 'APPLICANT', true)
     `, [hash]);
 
-    const res = await request(app.getHttpServer()).post('/auth/login')
+    const res = await request(app.getHttpServer()).post('/api/v1/auth/login')
       .send({ email: 'applicant@docs.test', password: 'Password1!' });
     applicantToken = res.body.accessToken;
 
     // Create application
     const appRes = await request(app.getHttpServer())
-      .post('/applications')
+      .post('/api/v1/applications')
       .set('Authorization', `Bearer ${applicantToken}`)
       .send({ bankName: 'Docs Test Bank', licenceType: 'COMMERCIAL_BANK', capitalAmount: 1000000 });
     appId = appRes.body.id;
   });
 
   afterAll(async () => {
-    await dataSource.query(`DELETE FROM users WHERE email LIKE '%@docs.test'`);
+    await cleanupUsers(dataSource, '%@docs.test');
     await app.close();
   });
 
@@ -53,7 +55,7 @@ describe('Document uploads (e2e)', () => {
     sixMB[0] = 0x25; sixMB[1] = 0x50; sixMB[2] = 0x44; sixMB[3] = 0x46;
 
     const res = await request(app.getHttpServer())
-      .post(`/applications/${appId}/documents/test-slot`)
+      .post(`/api/v1/applications/${appId}/documents/test-slot`)
       .set('Authorization', `Bearer ${applicantToken}`)
       .attach('file', sixMB, { filename: 'big.pdf', contentType: 'application/pdf' });
 
@@ -66,7 +68,7 @@ describe('Document uploads (e2e)', () => {
     const fakeExe = Buffer.from([0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00]);
 
     const res = await request(app.getHttpServer())
-      .post(`/applications/${appId}/documents/test-slot`)
+      .post(`/api/v1/applications/${appId}/documents/test-slot`)
       .set('Authorization', `Bearer ${applicantToken}`)
       .attach('file', fakeExe, { filename: 'virus.pdf', contentType: 'application/pdf' });
 
@@ -79,7 +81,7 @@ describe('Document uploads (e2e)', () => {
     const pdf = Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF');
 
     const res = await request(app.getHttpServer())
-      .post(`/applications/${appId}/documents/incorporation_cert`)
+      .post(`/api/v1/applications/${appId}/documents/incorporation_cert`)
       .set('Authorization', `Bearer ${applicantToken}`)
       .attach('file', pdf, { filename: 'cert.pdf', contentType: 'application/pdf' });
 
@@ -92,7 +94,7 @@ describe('Document uploads (e2e)', () => {
     const pdf = Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF');
 
     const res = await request(app.getHttpServer())
-      .post(`/applications/${appId}/documents/incorporation_cert`)
+      .post(`/api/v1/applications/${appId}/documents/incorporation_cert`)
       .set('Authorization', `Bearer ${applicantToken}`)
       .attach('file', pdf, { filename: 'cert_v2.pdf', contentType: 'application/pdf' });
 

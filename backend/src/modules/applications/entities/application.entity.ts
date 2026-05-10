@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -32,6 +33,7 @@ export class Application {
   id!: string;
 
   @ManyToOne(() => User, { eager: false })
+  @JoinColumn({ name: 'applicant_id' })
   applicant!: User;
 
   @Column({ name: 'applicant_id' })
@@ -55,10 +57,10 @@ export class Application {
   @VersionColumn()
   version!: number;
 
-  @Column({ name: 'reviewer_id', nullable: true })
+  @Column({ name: 'reviewer_id', nullable: true, type: 'uuid' })
   reviewerId!: string | null;
 
-  @Column({ name: 'decision_maker_id', nullable: true })
+  @Column({ name: 'decision_maker_id', nullable: true, type: 'uuid' })
   decisionMakerId!: string | null;
 
   @Column({ name: 'decision_notes', nullable: true, type: 'text' })

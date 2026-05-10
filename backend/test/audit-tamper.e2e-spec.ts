@@ -1,6 +1,7 @@
+import { cleanupUsers } from './setup';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { DataSource } from 'typeorm';
 import * as argon2 from 'argon2';
@@ -31,12 +32,13 @@ describe('Audit log tamper detection (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api/v1');
     app.useGlobalFilters(new GlobalExceptionFilter());
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
 
     dataSource = moduleFixture.get(DataSource);
-    await dataSource.query(`DELETE FROM users WHERE email LIKE '%@tamper.test'`);
+    await cleanupUsers(dataSource, '%@tamper.test');
     const hash = await argon2.hash('Password1!', { type: argon2.argon2id });
     await dataSource.query(`
       INSERT INTO users (id, email, password_hash, role, is_active) VALUES
@@ -44,29 +46,29 @@ describe('Audit log tamper detection (e2e)', () => {
         (gen_random_uuid(), 'applicant@tamper.test', $1, 'APPLICANT', true)
     `, [hash]);
 
-    const loginAdmin = await request(app.getHttpServer()).post('/auth/login')
+    const loginAdmin = await request(app.getHttpServer()).post('/api/v1/auth/login')
       .send({ email: 'admin@tamper.test', password: 'Password1!' });
     adminToken = loginAdmin.body.accessToken;
 
-    const loginApplicant = await request(app.getHttpServer()).post('/auth/login')
+    const loginApplicant = await request(app.getHttpServer()).post('/api/v1/auth/login')
       .send({ email: 'applicant@tamper.test', password: 'Password1!' });
     applicantToken = loginApplicant.body.accessToken;
   });
 
   afterAll(async () => {
-    await dataSource.query(`DELETE FROM users WHERE email LIKE '%@tamper.test'`);
+    await cleanupUsers(dataSource, '%@tamper.test');
     await app.close();
   });
 
   it('audit verify returns valid before any tampering', async () => {
     // Generate an audit entry by creating an application
     await request(app.getHttpServer())
-      .post('/applications')
+      .post('/api/v1/applications')
       .set('Authorization', `Bearer ${applicantToken}`)
       .send({ bankName: 'Tamper Test Bank', licenceType: 'COMMERCIAL_BANK', capitalAmount: 1000000 });
 
     const res = await request(app.getHttpServer())
-      .get('/audit/verify')
+      .get('/api/v1/audit/verify')
       .set('Authorization', `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.valid).toBe(true);
@@ -116,7 +118,7 @@ describe('Audit log tamper detection (e2e)', () => {
 
     // Verify now detects the break
     const res = await request(app.getHttpServer())
-      .get('/audit/verify')
+      .get('/api/v1/audit/verify')
       .set('Authorization', `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.valid).toBe(false);

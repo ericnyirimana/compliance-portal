@@ -325,6 +325,18 @@ export class ApplicationsService {
       );
 
       if (!result || result.length === 0) {
+        // Re-read to distinguish version conflict from invalid transition.
+        // A version mismatch means concurrent modification → STALE_VERSION takes priority
+        // regardless of what state the app is in now.
+        const current = await manager.findOne(Application, { where: { id } });
+        if (!current || current.version !== currentVersion) {
+          throw new ConflictException({
+            code: 'STALE_VERSION',
+            message: 'Application was modified by another request. Please retry.',
+          });
+        }
+        // Version unchanged but update still missed — re-run the state check to surface the right error
+        this.stateMachine.assertTransition(current.status, nextStatus, user.role);
         throw new ConflictException({
           code: 'STALE_VERSION',
           message: 'Application was modified by another request. Please retry.',

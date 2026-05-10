@@ -11,6 +11,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { Readable } from 'stream';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const FileType = require('file-type');
 import { Document } from './entities/document.entity';
 import { DocumentVersion } from './entities/document-version.entity';
 import { Application } from '../applications/entities/application.entity';
@@ -64,8 +66,7 @@ export class DocumentsService {
     const buffer = await this.collectStream(stream);
 
     // Sniff MIME type from magic bytes (NOT Content-Type header)
-    const { fileTypeFromBuffer } = await import('file-type');
-    const detected = await fileTypeFromBuffer(buffer);
+    const detected = await FileType.fromBuffer(buffer);
 
     if (!detected || !ALLOWED_MIME_TYPES.includes(detected.mime)) {
       throw new BadRequestException({
@@ -186,7 +187,7 @@ export class DocumentsService {
       throw new NotFoundException({ code: 'DOCUMENT_VERSION_NOT_FOUND', message: 'Document version not found' });
     }
 
-    const fullPath = path.join(this.storagePath, version.storagePath);
+    const fullPath = path.resolve(this.storagePath, version.storagePath);
     if (!fs.existsSync(fullPath)) {
       throw new NotFoundException({ code: 'FILE_NOT_FOUND', message: 'File not found on disk' });
     }
