@@ -1,6 +1,6 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 export function TopBar() {
   const { user, logout } = useAuth();
@@ -12,23 +12,34 @@ export function TopBar() {
   }
 
   return (
-    <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+    <header className="h-14 bg-bnr-light border-b border-bnr-muted flex items-center justify-between px-6">
+      {/* Left: breadcrumb placeholder */}
       <div />
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <User className="h-4 w-4" />
-          <span>{user?.email}</span>
-          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
-            {user?.role?.replace('_', ' ')}
-          </span>
+
+      {/* Right: user + logout */}
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <div
+            className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+            style={{ backgroundColor: '#5C3B0E' }}
+          >
+            {user?.email?.[0]?.toUpperCase()}
+          </div>
+          <div className="hidden sm:block">
+            <p className="text-xs font-medium text-bnr-text leading-tight">{user?.email}</p>
+            <p className="text-[10px] text-bnr-subtle uppercase tracking-wide leading-tight">
+              {user?.role?.replace('_', ' ')}
+            </p>
+          </div>
         </div>
+
         <button
           onClick={handleLogout}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 transition-colors"
+          className="flex items-center gap-1.5 text-xs text-bnr-subtle hover:text-red-600 transition-colors font-medium"
           aria-label="Logout"
         >
-          <LogOut className="h-4 w-4" />
-          Logout
+          <LogOut className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Logout</span>
         </button>
       </div>
     </header>

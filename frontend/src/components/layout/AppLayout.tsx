@@ -8,7 +8,7 @@ export function AppLayout() {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-bnr-cream">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <TopBar />

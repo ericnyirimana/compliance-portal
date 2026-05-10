@@ -12,6 +12,11 @@ interface FormValues {
   address: string;
 }
 
+const fieldClass =
+  'w-full rounded-lg border border-bnr-muted bg-white px-3 py-2.5 text-sm text-bnr-text placeholder:text-bnr-subtle focus:outline-none focus:ring-2 focus:ring-bnr-dark/40 focus:border-bnr-brown';
+
+const labelClass = 'block text-sm font-medium text-bnr-text mb-1';
+
 export function NewApplicationPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -29,25 +34,32 @@ export function NewApplicationPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-xl font-semibold text-gray-900">New Application</h1>
+      <div>
+        <h1 className="text-xl font-bold text-bnr-text">New Licence Application</h1>
+        <p className="text-bnr-subtle text-sm mt-0.5">Fill in the details below to submit your application to BNR.</p>
+      </div>
 
-      <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+      <form
+        onSubmit={handleSubmit((d) => mutation.mutate(d))}
+        className="bg-bnr-light rounded-xl border border-bnr-muted p-6 space-y-5"
+      >
         <div>
-          <label htmlFor="bankName" className="block text-sm font-medium text-gray-700 mb-1">Bank / Institution Name</label>
+          <label htmlFor="bankName" className={labelClass}>Bank / Institution Name</label>
           <input
             id="bankName"
+            placeholder="e.g. Kigali Commercial Bank Ltd"
             {...register('bankName', { required: 'Bank name is required', minLength: { value: 3, message: 'Min 3 characters' } })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={fieldClass}
           />
-          {errors.bankName && <p className="text-red-500 text-xs mt-1">{errors.bankName.message}</p>}
+          {errors.bankName && <p className="text-red-600 text-xs mt-1">{errors.bankName.message}</p>}
         </div>
 
         <div>
-          <label htmlFor="licenceType" className="block text-sm font-medium text-gray-700 mb-1">Licence Type</label>
+          <label htmlFor="licenceType" className={labelClass}>Licence Type</label>
           <select
             id="licenceType"
             {...register('licenceType', { required: 'Licence type is required' })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={fieldClass}
           >
             <option value="">Select type…</option>
             <option value="COMMERCIAL_BANK">Commercial Bank</option>
@@ -55,42 +67,49 @@ export function NewApplicationPage() {
             <option value="FOREX_BUREAU">Forex Bureau</option>
             <option value="PAYMENT_INSTITUTION">Payment Institution</option>
           </select>
-          {errors.licenceType && <p className="text-red-500 text-xs mt-1">{errors.licenceType.message}</p>}
+          {errors.licenceType && <p className="text-red-600 text-xs mt-1">{errors.licenceType.message}</p>}
         </div>
 
         <div>
-          <label htmlFor="capitalAmount" className="block text-sm font-medium text-gray-700 mb-1">Capital Amount (RWF)</label>
+          <label htmlFor="capitalAmount" className={labelClass}>Capital Amount (RWF)</label>
           <input
             id="capitalAmount"
             type="number"
             min={1}
-            {...register('capitalAmount', { required: 'Capital amount is required', min: { value: 1, message: 'Must be positive' }, valueAsNumber: true })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="e.g. 5000000000"
+            {...register('capitalAmount', {
+              required: 'Capital amount is required',
+              min: { value: 1, message: 'Must be positive' },
+              valueAsNumber: true,
+            })}
+            className={fieldClass}
           />
-          {errors.capitalAmount && <p className="text-red-500 text-xs mt-1">{errors.capitalAmount.message}</p>}
+          {errors.capitalAmount && <p className="text-red-600 text-xs mt-1">{errors.capitalAmount.message}</p>}
         </div>
 
         <div>
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Business Address (optional)</label>
+          <label htmlFor="address" className={labelClass}>Business Address <span className="text-bnr-subtle font-normal">(optional)</span></label>
           <input
             id="address"
+            placeholder="e.g. KG 1 Ave, Kigali, Rwanda"
             {...register('address')}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={fieldClass}
           />
         </div>
 
-        <div className="flex gap-3 pt-2">
+        <div className="flex gap-3 pt-2 border-t border-bnr-muted">
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-60 hover:opacity-90"
+            style={{ backgroundColor: '#5C3B0E' }}
           >
-            {mutation.isPending ? 'Creating…' : 'Create Application'}
+            {mutation.isPending ? 'Creating…' : 'Submit Application'}
           </button>
           <button
             type="button"
             onClick={() => navigate('/applications')}
-            className="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-lg text-sm transition-colors"
+            className="text-bnr-subtle hover:text-bnr-text px-4 py-2 rounded-lg text-sm transition-colors"
           >
             Cancel
           </button>

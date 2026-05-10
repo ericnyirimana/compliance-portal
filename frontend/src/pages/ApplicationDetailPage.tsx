@@ -8,6 +8,9 @@ import { StatusBadge } from '../components/StatusBadge';
 import { formatDate, formatBytes, getApiErrorMessage } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 
+const BNR_BTN = 'w-full text-white px-4 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition-opacity hover:opacity-90';
+const TEXTAREA = 'w-full rounded-lg border border-bnr-muted bg-white px-3 py-2 text-sm resize-none text-bnr-text focus:outline-none focus:ring-2 focus:ring-bnr-dark/40';
+
 function ActionPanel({ app, onAction }: { app: Application; onAction: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -18,11 +21,12 @@ function ActionPanel({ app, onAction }: { app: Application; onAction: () => void
       api.post(`/applications/${app.id}/${action}`, body ?? {}).then((r) => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['application', app.id] }); onAction(); },
     onError: (err) => {
-      const msg = getApiErrorMessage(err);
-      if (msg.includes('STALE_VERSION') || (err as { response?: { data?: { error?: { code?: string } } } }).response?.data?.error?.code === 'STALE_VERSION') {
-        toast.error('This application was updated by someone else. Please refresh and try again.');
+      const code = (err as { response?: { data?: { error?: { code?: string } } } })
+        .response?.data?.error?.code;
+      if (code === 'STALE_VERSION') {
+        toast.error('Application was updated by someone else — please refresh and try again.');
       } else {
-        toast.error(msg);
+        toast.error(getApiErrorMessage(err));
       }
     },
   });
@@ -32,12 +36,13 @@ function ActionPanel({ app, onAction }: { app: Application; onAction: () => void
 
   if (role === 'APPLICANT' && status === 'DRAFT') {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-medium text-gray-900 mb-4">Actions</h3>
+      <div className="bg-bnr-light rounded-xl border border-bnr-muted p-5">
+        <h3 className="font-semibold text-bnr-text mb-4 text-sm uppercase tracking-wide">Actions</h3>
         <button
           onClick={() => transition.mutate({ action: 'submit' })}
           disabled={transition.isPending}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          className={BNR_BTN}
+          style={{ backgroundColor: '#5C3B0E' }}
         >
           {transition.isPending ? 'Submitting…' : 'Submit Application'}
         </button>
@@ -47,14 +52,15 @@ function ActionPanel({ app, onAction }: { app: Application; onAction: () => void
 
   if (role === 'REVIEWER' && status === 'SUBMITTED') {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-medium text-gray-900 mb-4">Actions</h3>
+      <div className="bg-bnr-light rounded-xl border border-bnr-muted p-5">
+        <h3 className="font-semibold text-bnr-text mb-4 text-sm uppercase tracking-wide">Actions</h3>
         <button
           onClick={() => transition.mutate({ action: 'pickup' })}
           disabled={transition.isPending}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          className={BNR_BTN}
+          style={{ backgroundColor: '#5C3B0E' }}
         >
-          Pick Up for Review
+          {transition.isPending ? 'Picking up…' : 'Pick Up for Review'}
         </button>
       </div>
     );
@@ -62,20 +68,20 @@ function ActionPanel({ app, onAction }: { app: Application; onAction: () => void
 
   if (role === 'REVIEWER' && status === 'UNDER_REVIEW') {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h3 className="font-medium text-gray-900">Reviewer Actions</h3>
+      <div className="bg-bnr-light rounded-xl border border-bnr-muted p-5 space-y-4">
+        <h3 className="font-semibold text-bnr-text text-sm uppercase tracking-wide">Reviewer Actions</h3>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Add notes…"
-          rows={3}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Add review notes…"
+          rows={4}
+          className={TEXTAREA}
         />
         <div className="flex gap-2">
           <button
             onClick={() => transition.mutate({ action: 'recommend', body: { notes } })}
             disabled={transition.isPending}
-            className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-2 rounded-lg text-sm font-medium"
+            className="flex-1 text-white px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 bg-green-700 hover:bg-green-800"
           >
             Recommend
           </button>
@@ -85,7 +91,7 @@ function ActionPanel({ app, onAction }: { app: Application; onAction: () => void
               transition.mutate({ action: 'request-info', body: { notes } });
             }}
             disabled={transition.isPending}
-            className="flex-1 bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 text-white px-3 py-2 rounded-lg text-sm font-medium"
+            className="flex-1 text-white px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 bg-amber-700 hover:bg-amber-800"
           >
             Request Info
           </button>
@@ -96,17 +102,18 @@ function ActionPanel({ app, onAction }: { app: Application; onAction: () => void
 
   if (role === 'APPLICANT' && status === 'RETURNED_FOR_INFO') {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-medium text-gray-900 mb-4">Actions</h3>
-        <p className="text-sm text-yellow-700 bg-yellow-50 rounded-lg p-3 mb-4">
-          Additional information has been requested. Upload any missing documents then resubmit.
-        </p>
+      <div className="bg-bnr-light rounded-xl border border-bnr-muted p-5 space-y-4">
+        <h3 className="font-semibold text-bnr-text text-sm uppercase tracking-wide">Actions</h3>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+          Additional information has been requested by the reviewer. Upload any missing documents, then resubmit.
+        </div>
         <button
           onClick={() => transition.mutate({ action: 'resubmit' })}
           disabled={transition.isPending}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          className={BNR_BTN}
+          style={{ backgroundColor: '#5C3B0E' }}
         >
-          Resubmit
+          {transition.isPending ? 'Resubmitting…' : 'Resubmit'}
         </button>
       </div>
     );
@@ -114,27 +121,27 @@ function ActionPanel({ app, onAction }: { app: Application; onAction: () => void
 
   if (role === 'DECISION_MAKER' && status === 'PENDING_DECISION') {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h3 className="font-medium text-gray-900">Decision</h3>
+      <div className="bg-bnr-light rounded-xl border border-bnr-muted p-5 space-y-4">
+        <h3 className="font-semibold text-bnr-text text-sm uppercase tracking-wide">Issue Decision</h3>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Decision notes…"
-          rows={3}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          rows={4}
+          className={TEXTAREA}
         />
         <div className="flex gap-2">
           <button
             onClick={() => transition.mutate({ action: 'decide', body: { decision: 'APPROVED', notes } })}
             disabled={transition.isPending}
-            className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-2 rounded-lg text-sm font-medium"
+            className="flex-1 text-white px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 bg-green-700 hover:bg-green-800"
           >
             Approve
           </button>
           <button
             onClick={() => transition.mutate({ action: 'decide', body: { decision: 'REJECTED', notes } })}
             disabled={transition.isPending}
-            className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-3 py-2 rounded-lg text-sm font-medium"
+            className="flex-1 text-white px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 bg-red-700 hover:bg-red-800"
           >
             Reject
           </button>
@@ -173,23 +180,29 @@ function DocumentsTab({ appId }: { appId: string }) {
     }
   }
 
-  if (isLoading) return <div className="p-6 text-gray-400 text-sm">Loading documents…</div>;
+  if (isLoading) return <div className="p-6 text-bnr-subtle text-sm">Loading documents…</div>;
 
   return (
     <div className="space-y-6 p-6">
+      {/* Upload new slot */}
       <div className="flex items-end gap-3">
         <div className="flex-1">
-          <label htmlFor="slotName" className="block text-sm font-medium text-gray-700 mb-1">Upload new document slot</label>
+          <label htmlFor="slotName" className="block text-sm font-medium text-bnr-text mb-1">
+            New document slot name
+          </label>
           <input
             id="slotName"
             value={uploadSlot}
             onChange={(e) => setUploadSlot(e.target.value)}
             placeholder="e.g. incorporation_certificate"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-bnr-muted bg-white px-3 py-2 text-sm text-bnr-text focus:outline-none focus:ring-2 focus:ring-bnr-dark/40"
           />
         </div>
-        <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          {uploading === uploadSlot ? 'Uploading…' : 'Choose File'}
+        <label
+          className="cursor-pointer text-white px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 flex-shrink-0"
+          style={{ backgroundColor: '#5C3B0E' }}
+        >
+          {uploading === uploadSlot ? 'Uploading…' : 'Upload File'}
           <input
             type="file"
             className="hidden"
@@ -205,7 +218,7 @@ function DocumentsTab({ appId }: { appId: string }) {
       </div>
 
       {slots.length === 0 ? (
-        <p className="text-gray-400 text-sm text-center py-8">No documents uploaded yet.</p>
+        <p className="text-bnr-subtle text-sm text-center py-8">No documents uploaded yet.</p>
       ) : (
         <div className="space-y-4">
           {slots.map((slot) => (
@@ -229,10 +242,12 @@ function SlotCard({ slot, appId, onUpload, uploading }: {
   });
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
-      <div className="bg-gray-50 px-4 py-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">{slot.slot.replace(/_/g, ' ')}</span>
-        <label className="cursor-pointer text-xs text-blue-600 hover:text-blue-700 font-medium">
+    <div className="border border-bnr-muted rounded-lg overflow-hidden">
+      <div className="bg-bnr-cream px-4 py-3 flex items-center justify-between">
+        <span className="text-sm font-semibold text-bnr-text capitalize">
+          {slot.slot.replace(/_/g, ' ')}
+        </span>
+        <label className="cursor-pointer text-xs font-medium text-bnr-brown hover:text-bnr-dark transition-colors">
           Upload new version
           <input
             type="file"
@@ -247,16 +262,16 @@ function SlotCard({ slot, appId, onUpload, uploading }: {
           />
         </label>
       </div>
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-bnr-muted/60">
         {versions.map((v) => (
-          <div key={v.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+          <div key={v.id} className="flex items-center justify-between px-4 py-2.5 text-sm bg-bnr-light">
             <div>
-              <span className="font-medium text-gray-800">{v.filenameOriginal}</span>
-              <span className="text-gray-400 text-xs ml-2">v{v.versionNumber} · {formatBytes(v.sizeBytes)}</span>
+              <span className="font-medium text-bnr-text">{v.filenameOriginal}</span>
+              <span className="text-bnr-subtle text-xs ml-2">v{v.versionNumber} · {formatBytes(v.sizeBytes)}</span>
             </div>
             <a
               href={`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/applications/${appId}/documents/${slot.slot}/versions/${v.id}/download`}
-              className="text-blue-600 hover:underline text-xs"
+              className="text-xs font-medium text-bnr-brown hover:underline"
               target="_blank"
               rel="noreferrer"
             >
@@ -277,26 +292,33 @@ function AuditTab({ appId }: { appId: string }) {
 
   const [entries, total] = data ?? [[], 0];
 
-  if (isLoading) return <div className="p-6 text-gray-400 text-sm">Loading audit trail…</div>;
-  if (entries.length === 0) return <div className="p-6 text-gray-400 text-sm text-center">No audit entries.</div>;
+  if (isLoading) return <div className="p-6 text-bnr-subtle text-sm">Loading audit trail…</div>;
+  if (entries.length === 0) return <div className="p-6 text-bnr-subtle text-sm text-center">No audit entries.</div>;
 
   return (
     <div className="p-6">
-      <p className="text-xs text-gray-400 mb-4">{total} total entries</p>
-      <ol className="relative border-l border-gray-200 space-y-4">
+      <p className="text-xs text-bnr-subtle mb-4">{total} entries in audit trail</p>
+      <ol className="relative border-l-2 border-bnr-muted space-y-5">
         {entries.map((entry) => (
-          <li key={entry.id} className="ml-4">
-            <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-blue-500" />
+          <li key={entry.id} className="ml-5">
+            <span
+              className="absolute -left-2 h-4 w-4 rounded-full border-2 border-bnr-light"
+              style={{ backgroundColor: '#5C3B0E' }}
+            />
             <div className="flex items-baseline gap-2">
-              <span className="text-sm font-medium text-gray-800">{entry.action.replace(/_/g, ' ')}</span>
-              <span className="text-xs text-gray-400">{formatDate(entry.occurredAt)}</span>
+              <span className="text-sm font-semibold text-bnr-text">
+                {entry.action.replace(/_/g, ' ')}
+              </span>
+              <span className="text-xs text-bnr-subtle">{formatDate(entry.occurredAt)}</span>
             </div>
             {entry.stateBefore && entry.stateAfter && (
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-bnr-subtle mt-0.5">
                 {entry.stateBefore} → {entry.stateAfter}
               </p>
             )}
-            <p className="text-xs text-gray-400 mt-0.5 font-mono">{entry.rowHash.slice(0, 16)}…</p>
+            <p className="text-[10px] text-bnr-muted mt-0.5 font-mono">
+              {entry.rowHash.slice(0, 20)}…
+            </p>
           </li>
         ))}
       </ol>
@@ -315,31 +337,41 @@ export function ApplicationDetailPage() {
   });
 
   if (isLoading) {
-    return <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="h-12 bg-gray-200 rounded-xl animate-pulse" />)}</div>;
+    return (
+      <div className="space-y-4 max-w-4xl">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-12 bg-bnr-muted/40 rounded-xl animate-pulse" />
+        ))}
+      </div>
+    );
   }
   if (error || !app) {
-    return <div className="text-red-500 text-sm">Failed to load application.</div>;
+    return <div className="text-red-600 text-sm">Failed to load application.</div>;
   }
 
   const tabs = ['overview', 'documents', 'audit'] as const;
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">{app.bankName}</h1>
-          <p className="text-gray-500 text-sm">{app.licenceType.replace(/_/g, ' ')}</p>
+      {/* Page header */}
+      <div className="flex items-start gap-3">
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-bnr-text">{app.bankName}</h1>
+          <p className="text-bnr-subtle text-sm">{app.licenceType.replace(/_/g, ' ')}</p>
         </div>
         <StatusBadge status={app.status} />
       </div>
 
-      <div className="flex gap-1 border-b border-gray-200">
+      {/* Tab bar */}
+      <div className="flex gap-0 border-b-2 border-bnr-muted">
         {tabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium capitalize border-b-2 -mb-px transition-colors ${
-              tab === t ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`px-5 py-2 text-sm font-semibold capitalize border-b-2 -mb-0.5 transition-colors ${
+              tab === t
+                ? 'border-bnr-dark text-bnr-dark'
+                : 'border-transparent text-bnr-subtle hover:text-bnr-text'
             }`}
           >
             {t}
@@ -347,11 +379,12 @@ export function ApplicationDetailPage() {
         ))}
       </div>
 
+      {/* Content + action panel */}
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2">
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-bnr-light rounded-xl border border-bnr-muted overflow-hidden">
             {tab === 'overview' && (
-              <dl className="divide-y divide-gray-100 text-sm">
+              <dl className="divide-y divide-bnr-muted/60 text-sm">
                 {[
                   ['Capital Amount', `RWF ${Number(app.capitalAmount).toLocaleString()}`],
                   ['Address', app.address || '—'],
@@ -359,11 +392,11 @@ export function ApplicationDetailPage() {
                   ['Submitted', formatDate(app.submittedAt)],
                   ['Decided', formatDate(app.decidedAt)],
                   ['Decision Notes', app.decisionNotes || '—'],
-                  ['Version', app.version],
+                  ['Optimistic Version', String(app.version)],
                 ].map(([k, v]) => (
                   <div key={k as string} className="grid grid-cols-2 px-6 py-3">
-                    <dt className="text-gray-500">{k as string}</dt>
-                    <dd className="text-gray-900">{v as string}</dd>
+                    <dt className="text-bnr-subtle font-medium">{k as string}</dt>
+                    <dd className="text-bnr-text">{v as string}</dd>
                   </div>
                 ))}
               </dl>
@@ -372,8 +405,12 @@ export function ApplicationDetailPage() {
             {tab === 'audit' && <AuditTab appId={app.id} />}
           </div>
         </div>
+
         <div>
-          <ActionPanel app={app} onAction={() => qc.invalidateQueries({ queryKey: ['application', id] })} />
+          <ActionPanel
+            app={app}
+            onAction={() => qc.invalidateQueries({ queryKey: ['application', id] })}
+          />
         </div>
       </div>
     </div>

@@ -21,22 +21,27 @@ export function AdminUsersPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-gray-900">User Management</h1>
+      <div>
+        <h1 className="text-xl font-bold text-bnr-text">User Management</h1>
+        <p className="text-bnr-subtle text-sm mt-0.5">Activate, deactivate, or review all portal users.</p>
+      </div>
 
-      <div className="bg-white rounded-xl border border-gray-200">
+      <div className="bg-bnr-light rounded-xl border border-bnr-muted overflow-hidden">
         {isLoading && (
           <div className="p-8 space-y-3">
-            {[...Array(4)].map((_, i) => <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />)}
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-8 bg-bnr-muted/50 rounded animate-pulse" />
+            ))}
           </div>
         )}
-        {error && <div className="p-8 text-center text-red-500 text-sm">Failed to load users.</div>}
+        {error && <div className="p-8 text-center text-red-600 text-sm">Failed to load users.</div>}
         {!isLoading && !error && users.length === 0 && (
-          <div className="p-12 text-center text-gray-400 text-sm">No users found.</div>
+          <div className="p-12 text-center text-bnr-subtle text-sm">No users found.</div>
         )}
         {!isLoading && !error && users.length > 0 && (
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 text-gray-500 text-left">
+              <tr className="bg-bnr-cream text-bnr-subtle text-left">
                 <th className="px-6 py-3 font-medium">Email</th>
                 <th className="px-6 py-3 font-medium">Role</th>
                 <th className="px-6 py-3 font-medium">Status</th>
@@ -44,10 +49,10 @@ export function AdminUsersPage() {
                 <th className="px-6 py-3 font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-bnr-muted/60">
               {users.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-3 text-gray-900">{u.email}</td>
+                <tr key={u.id} className="hover:bg-bnr-cream/50 transition-colors">
+                  <td className="px-6 py-3 text-bnr-text font-medium">{u.email}</td>
                   <td className="px-6 py-3">
                     <Badge variant="info">{u.role.replace('_', ' ')}</Badge>
                   </td>
@@ -56,14 +61,14 @@ export function AdminUsersPage() {
                       {u.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                   </td>
-                  <td className="px-6 py-3 text-gray-500">{formatDate(u.createdAt)}</td>
+                  <td className="px-6 py-3 text-bnr-subtle">{formatDate(u.createdAt)}</td>
                   <td className="px-6 py-3">
                     <button
                       onClick={() => toggleActive.mutate({ id: u.id, isActive: !u.isActive })}
                       disabled={toggleActive.isPending}
-                      className={`text-xs font-medium px-3 py-1 rounded-full transition-colors ${
+                      className={`text-xs font-semibold px-3 py-1 rounded-full transition-colors ${
                         u.isActive
-                          ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                          ? 'bg-red-50 text-red-700 hover:bg-red-100'
                           : 'bg-green-50 text-green-700 hover:bg-green-100'
                       }`}
                     >
