@@ -155,7 +155,6 @@ npm run seed
 
 ```
 bnr-licensing-portal/
-  PLAN.md              Implementation plan (written before coding)
   DESIGN.md            Architecture and design decisions
   docker-compose.yml   One-command startup
   .env.example         Environment variable template
