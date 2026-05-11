@@ -12,6 +12,7 @@
     "seed": "ts-node --project tsconfig.json src/database/seeds/run-seeds.ts",
     "export:openapi": "ts-node --project tsconfig.json src/scripts/export-openapi.ts",
     "test": "jest",
+    "test:cov": "jest --coverage",
     "test:watch": "jest --watch",
     "test:e2e": "jest --config test/jest-e2e.json",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix"

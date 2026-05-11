@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit:
+    name: Unit tests & coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        run: npm run test:cov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: backend/coverage/lcov.info
+          flags: unit
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: bnr_owner
+          POSTGRES_PASSWORD: changeme_owner
+          POSTGRES_DB: bnr_licensing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_OWNER_URL: postgres://bnr_owner:changeme_owner@localhost:5432/bnr_licensing
+      DATABASE_URL: postgres://bnr_app:changeme_app@localhost:5432/bnr_licensing
+      JWT_ACCESS_SECRET: test-access-secret-at-least-32-chars-long
+      JWT_REFRESH_SECRET: test-refresh-secret-at-least-32-chars-long
+      NODE_ENV: test
+      STORAGE_PATH: /tmp/bnr-storage
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create storage directory
+        run: mkdir -p /tmp/bnr-storage
+
+      - name: Run migrations
+        run: npm run migration:run
+
+      - name: Seed database
+        run: npm run seed
+
+      - name: Run e2e tests
+        run: npm run test:e2e

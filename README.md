@@ -1,5 +1,8 @@
 # BNR Licensing & Compliance Portal
 
+[![CI](https://github.com/ericnyirimana/compliance-portal/actions/workflows/ci.yml/badge.svg)](https://github.com/ericnyirimana/compliance-portal/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/ericnyirimana/compliance-portal/graph/badge.svg)](https://codecov.io/gh/ericnyirimana/compliance-portal)
+
 > Take-home assessment — National Bank of Rwanda
 > A production-grade licensing workflow system replacing manual email/spreadsheet processes.
 
